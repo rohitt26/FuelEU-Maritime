@@ -5,10 +5,13 @@ const api = new RouteApiAdapter();
 
 export const useComparison = () => {
   const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getComparison().then(setData);
+    api.getComparison()
+      .then((res) => setData(res))
+      .finally(() => setLoading(false));
   }, []);
 
-  return { data };
+  return { data, loading };
 };
