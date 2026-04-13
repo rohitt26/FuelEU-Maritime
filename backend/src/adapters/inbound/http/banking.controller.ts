@@ -18,12 +18,18 @@ const applyBanked = new ApplyBanked(complianceRepo, bankingRepo);
 router.get("/records", async (req, res) => {
   const { routeId, year } = req.query;
 
-  const data = await getRecords.execute(
+  if (!routeId || !year) {
+    return res.status(400).json({
+      error: "routeId and year required"
+    });
+  }
+
+  const record = await getRecords.execute(
     routeId as string,
     Number(year)
   );
 
-  res.json(data);
+  res.json(record || { routeId, year, amount: 0 });
 });
 
 // POST /banking/bank

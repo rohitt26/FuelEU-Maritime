@@ -52,10 +52,10 @@ export const ComparePage = () => {
 
               <td
                 className={
-                  r.percentDiff > 0 ? "text-red-500" : "text-green-500"
+                  (r.percentDiff ?? 0) > 0 ? "text-red-500" : "text-green-500"
                 }
               >
-                {r.percentDiff?.toFixed(2)}%
+                {(r.percentDiff ?? 0).toFixed(2)}%
               </td>
 
               <td>

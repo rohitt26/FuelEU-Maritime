@@ -18,7 +18,9 @@ router.get("/cb", async (req, res) => {
     const { routeId, year } = req.query;
 
     if (!routeId || !year) {
-      return res.status(400).json({ error: "routeId and year required" });
+      return res.status(400).json({
+        error: "routeId and year are required"
+      });
     }
 
     const result = await computeCB.execute(
@@ -26,7 +28,14 @@ router.get("/cb", async (req, res) => {
       Number(year)
     );
 
+    if (!result) {
+      return res.status(404).json({
+        error: "Compliance data not found for given routeId/year"
+      });
+    }
+
     res.json(result);
+
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
