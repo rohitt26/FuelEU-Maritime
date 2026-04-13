@@ -6,6 +6,8 @@ import {
   getBankingKpis,
 } from "../core/application/usecases/banking";
 
+// --- Helper Components ---
+
 const ChevronDown = () => (
   <svg
     className="pointer-events-none absolute bottom-4 right-3 h-4 w-4 text-slate-400"
@@ -16,6 +18,8 @@ const ChevronDown = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
   </svg>
 );
+
+// --- Main Component ---
 
 export const BankingPage = () => {
   const {
@@ -33,16 +37,44 @@ export const BankingPage = () => {
     clearMessages,
   } = useBanking();
 
-  const [pendingSelection, setPendingSelection] = useState("");
+  // Calculation States (Two-step selection)
+  const [calcYear, setCalcYear] = useState<string>("");
+  const [calcRoute, setCalcRoute] = useState<string>("");
+
+  // Table Filter State
+  const [tableYearFilter, setTableYearFilter] = useState<string>("All");
+
+  // UI States
   const [activeKey, setActiveKey] = useState("");
   const [amount, setAmount] = useState(0);
   const [showTransactions, setShowTransactions] = useState(false);
 
-  const pendingRows = useMemo(
-    () => rows.filter((row) => !row.isCalculated),
-    [rows]
-  );
+  // --- Logic & Memos ---
 
+  // 1. Logic for Calculation Selects
+  const pendingRows = useMemo(() => rows.filter((row) => !row.isCalculated), [rows]);
+
+  const availableCalcYears = useMemo(() => {
+    const years = Array.from(new Set(pendingRows.map((r) => r.year)));
+    return years.sort((a, b) => b - a);
+  }, [pendingRows]);
+
+  const routesForSelectedYear = useMemo(() => {
+    return pendingRows.filter((r) => r.year === Number(calcYear));
+  }, [pendingRows, calcYear]);
+
+  // 2. Logic for Table Filtering
+  const allAvailableYears = useMemo(() => {
+    const years = Array.from(new Set(rows.map((r) => r.year)));
+    return ["All", ...years.sort((a, b) => b - a).map(String)];
+  }, [rows]);
+
+  const filteredTableRows = useMemo(() => {
+    if (tableYearFilter === "All") return rows;
+    return rows.filter((r) => r.year === Number(tableYearFilter));
+  }, [rows, tableYearFilter]);
+
+  // 3. KPI & Active Row Logic
   const activeRow = useMemo(
     () => rows.find((row) => `${row.routeId}-${row.year}` === activeKey) ?? null,
     [rows, activeKey]
@@ -50,29 +82,23 @@ export const BankingPage = () => {
 
   const snapshot =
     activeRow && selectedBalance
-      ? {
-          cb: selectedBalance,
-          bank,
-        }
+      ? { cb: selectedBalance, bank }
       : null;
 
   const kpis = getBankingKpis(snapshot, lastApplication);
-  const canBank = activeRow
-    ? canBankSurplus(snapshot) && !activeRow.alreadyBanked
-    : false;
+  const canBank = activeRow ? canBankSurplus(snapshot) && !activeRow.alreadyBanked : false;
   const canApply = canApplyBanked(snapshot, amount);
 
+  // --- Handlers ---
+
   const handleCalculate = async () => {
-    if (!pendingSelection) {
-      return;
-    }
+    if (!calcYear || !calcRoute) return;
 
-    const [routeId, year] = pendingSelection.split("|");
-    const balance = await calculateComplianceBalance(routeId, Number(year));
-
+    const balance = await calculateComplianceBalance(calcRoute, Number(calcYear));
     if (balance) {
-      setActiveKey(`${routeId}-${year}`);
-      setPendingSelection("");
+      setActiveKey(`${calcRoute}-${calcYear}`);
+      setCalcYear("");
+      setCalcRoute("");
     }
   };
 
@@ -81,30 +107,26 @@ export const BankingPage = () => {
     setActiveKey(`${routeId}-${year}`);
     setAmount(0);
 
-    if (rows.find((row) => row.routeId === routeId && row.year === year)?.isCalculated) {
+    const target = rows.find((row) => row.routeId === routeId && row.year === year);
+    if (target?.isCalculated) {
       await selectComplianceBalance(routeId, year);
     }
   };
 
   const handleBank = async () => {
-    if (!activeRow) {
-      return;
-    }
-
+    if (!activeRow) return;
     await bankSurplus(activeRow.routeId, activeRow.year);
   };
 
   const handleApply = async () => {
-    if (!activeRow) {
-      return;
-    }
-
+    if (!activeRow) return;
     await applyBanked(activeRow.routeId, activeRow.year, amount);
     setAmount(0);
   };
 
   return (
     <div className="mx-auto max-w-7xl p-8 text-slate-900">
+      {/* Messages */}
       <div className="mb-8 space-y-2">
         {error && (
           <div className="border-l-4 border-black bg-slate-50 p-4 text-sm font-medium">
@@ -118,6 +140,7 @@ export const BankingPage = () => {
         )}
       </div>
 
+      {/* Header */}
       <header className="mb-10 flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
@@ -142,27 +165,47 @@ export const BankingPage = () => {
         </div>
       </header>
 
+      {/* Controls: Calculation and Transactions */}
       <section className="mb-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="border border-slate-200 bg-white p-6">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
             Calculate Compliance Balance
           </p>
           <p className="mb-4 text-sm text-slate-500">
-            Only entries without a stored compliance balance appear here. Once calculated,
-            the value stays available in the table and is not recalculated.
+            Select a year, then select a route to compute the compliance balance.
           </p>
 
           <div className="flex flex-col gap-3 md:flex-row">
+            {/* Step 1: Select Year */}
             <div className="relative flex-1">
               <select
                 className="w-full appearance-none border border-slate-300 bg-white p-3 pr-10 text-sm focus:border-black focus:outline-none"
-                value={pendingSelection}
-                onChange={(event) => setPendingSelection(event.target.value)}
+                value={calcYear}
+                onChange={(e) => {
+                  setCalcYear(e.target.value);
+                  setCalcRoute(""); // Reset route selection if year changes
+                }}
               >
-                <option value="">Choose an entry to calculate...</option>
-                {pendingRows.map((row) => (
-                  <option key={`${row.routeId}-${row.year}`} value={`${row.routeId}|${row.year}`}>
-                    {row.routeId} - {row.vesselType} - {row.year}
+                <option value="">Select Year...</option>
+                {availableCalcYears.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+              <ChevronDown />
+            </div>
+
+            {/* Step 2: Select Route */}
+            <div className="relative flex-1">
+              <select
+                className="w-full appearance-none border border-slate-300 bg-white p-3 pr-10 text-sm focus:border-black focus:outline-none disabled:bg-slate-50"
+                value={calcRoute}
+                disabled={!calcYear}
+                onChange={(e) => setCalcRoute(e.target.value)}
+              >
+                <option value="">{calcYear ? "Select Route..." : "Choose year first"}</option>
+                {routesForSelectedYear.map((row) => (
+                  <option key={row.routeId} value={row.routeId}>
+                    {row.routeId} - {row.vesselType}
                   </option>
                 ))}
               </select>
@@ -171,7 +214,7 @@ export const BankingPage = () => {
 
             <button
               onClick={handleCalculate}
-              disabled={!pendingSelection || loading}
+              disabled={!calcRoute || loading}
               className="border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-white hover:text-black disabled:opacity-20"
             >
               {loading ? "Processing..." : "Calculate CB"}
@@ -179,15 +222,14 @@ export const BankingPage = () => {
           </div>
         </div>
 
+        {/* Transaction History */}
         <div className="border border-slate-200 bg-white p-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
                 Banking Transactions
               </p>
-              <p className="text-sm text-slate-500">
-                Every bank and apply action is stored here.
-              </p>
+              <p className="text-sm text-slate-500">History of all actions.</p>
             </div>
             <button
               onClick={() => setShowTransactions((current) => !current)}
@@ -200,27 +242,20 @@ export const BankingPage = () => {
           {showTransactions && (
             <div className="max-h-64 space-y-3 overflow-auto pr-1">
               {bank.transactions.length === 0 && (
-                <p className="text-sm text-slate-500">No banking transactions recorded yet.</p>
+                <p className="text-sm text-slate-500">No transactions recorded.</p>
               )}
-
               {bank.transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="border border-slate-200 bg-slate-50 p-3 text-sm"
-                >
+                <div key={transaction.id} className="border border-slate-200 bg-slate-50 p-3 text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
                       {transaction.type}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {new Date(transaction.createdAt).toLocaleString()}
+                      {new Date(transaction.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   <p className="mt-2 text-slate-700">
                     {transaction.routeId} / {transaction.year} / {transaction.amount.toFixed(2)}
-                  </p>
-                  <p className="mt-1 text-xs uppercase tracking-widest text-slate-500">
-                    Balance After: {transaction.balanceAfter.toFixed(2)}
                   </p>
                 </div>
               ))}
@@ -229,7 +264,26 @@ export const BankingPage = () => {
         </div>
       </section>
 
+      {/* Main Table Section */}
       <section className="mb-10 overflow-hidden border border-slate-200 bg-white">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
+            Compliance Records
+          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase text-slate-400">Filter Year:</span>
+            <select
+              className="border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-black"
+              value={tableYearFilter}
+              onChange={(e) => setTableYearFilter(e.target.value)}
+            >
+              {allAvailableYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-[0.15em] text-slate-500">
@@ -244,9 +298,8 @@ export const BankingPage = () => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {filteredTableRows.map((row) => {
                 const isActive = `${row.routeId}-${row.year}` === activeKey;
-
                 return (
                   <tr
                     key={`${row.routeId}-${row.year}`}
@@ -285,6 +338,7 @@ export const BankingPage = () => {
         </div>
       </section>
 
+      {/* Details & Actions Section */}
       {activeRow && selectedBalance && (
         <section className="grid gap-8 border-t border-slate-100 pt-10 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
@@ -304,25 +358,14 @@ export const BankingPage = () => {
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
                     {item.label}
                   </p>
-                  <p
-                    className={`text-2xl font-light tracking-tighter ${
-                      typeof item.value === "number"
-                        ? item.value < 0
-                          ? "text-red-500"
-                          : "text-slate-900"
-                        : "text-slate-900"
-                    }`}
-                  >
+                  <p className={`text-2xl font-light tracking-tighter ${typeof item.value === "number" && item.value < 0 ? "text-red-500" : "text-slate-900"}`}>
                     {typeof item.value === "number" ? item.value.toFixed(2) : item.value}
                   </p>
                 </div>
               ))}
             </div>
-
             <div className="border border-slate-200 bg-white p-6">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
-                Selected Entry
-              </p>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Selected Entry</p>
               <p className="text-sm text-slate-600">
                 {activeRow.routeId} / {activeRow.vesselType} / {activeRow.fuelType} / {activeRow.year}
               </p>
@@ -330,11 +373,9 @@ export const BankingPage = () => {
           </div>
 
           <div className="grid gap-8">
+            {/* Bank Action */}
             <div className="border border-slate-200 bg-white p-6">
               <h3 className="mb-2 text-sm font-bold uppercase tracking-widest">Bank Surplus</h3>
-              <p className="mb-5 text-sm text-slate-500">
-                Add this surplus to the single global bank balance.
-              </p>
               <button
                 onClick={handleBank}
                 disabled={!canBank || loading}
@@ -344,25 +385,20 @@ export const BankingPage = () => {
               </button>
               {!canBank && (
                 <p className="mt-3 text-[11px] italic text-slate-400">
-                  {activeRow.alreadyBanked
-                    ? "This entry has already been banked."
-                    : "Only positive compliance balances can be banked."}
+                  {activeRow.alreadyBanked ? "Already banked." : "Only surplus can be banked."}
                 </p>
               )}
             </div>
 
+            {/* Apply Action */}
             <div className="border border-slate-200 bg-white p-6">
               <h3 className="mb-2 text-sm font-bold uppercase tracking-widest">Apply Bank</h3>
-              <p className="mb-5 text-sm text-slate-500">
-                Use the global bank balance to reduce this deficit.
-              </p>
-
               <div className="flex gap-2">
                 <input
                   type="number"
                   className="flex-1 border border-slate-300 p-3 text-sm focus:border-black focus:outline-none"
                   value={amount}
-                  onChange={(event) => setAmount(Number(event.target.value))}
+                  onChange={(e) => setAmount(Number(e.target.value))}
                   placeholder="0.00"
                 />
                 <button
@@ -373,11 +409,9 @@ export const BankingPage = () => {
                   Apply
                 </button>
               </div>
-
               {!canApply && (
                 <p className="mt-3 text-[11px] italic text-slate-400">
-                  Apply is available only for deficit entries and cannot exceed the global bank
-                  balance.
+                  Only for deficit entries; cannot exceed bank balance.
                 </p>
               )}
             </div>
