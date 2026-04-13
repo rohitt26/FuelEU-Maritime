@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { PoolRepositoryFile } from "../../outbound/file/PoolRepositoryFile";
-import { ComplianceRepositoryFile } from "../../outbound/file/ComplianceRepositoryFile";
+import { PoolRepositoryPg } from "../../outbound/postgres/PoolRepositoryPg";
+import { ComplianceRepositoryPg } from "../../outbound/postgres/ComplianceRepositoryPg";
 import { CreatePool } from "../../../core/application/CreatePool";
 import { GetPools } from "../../../core/application/GetPools";
 
 const router = Router();
 
-const poolRepo = new PoolRepositoryFile();
-const complianceRepo = new ComplianceRepositoryFile();
+const poolRepo = new PoolRepositoryPg();
+const complianceRepo = new ComplianceRepositoryPg();
 
 const createPool = new CreatePool(complianceRepo, poolRepo);
 const getPools = new GetPools(poolRepo);

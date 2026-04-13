@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { RouteRepositoryFile } from "../../outbound/file/RouteRepositoryFile";
+import { RouteRepositoryPg } from "../../outbound/postgres/RouteRepositoryPg";
 import { GetRoutes } from "../../../core/application/GetRoutes";
 import { SetBaseline } from "../../../core/application/SetBaseline";
 import { CompareRoutes } from "../../../core/application/CompareRoutes";
 
 const router = Router();
 
-const repo = new RouteRepositoryFile();
+const repo = new RouteRepositoryPg();
 
 const getRoutes = new GetRoutes(repo);
 const setBaseline = new SetBaseline(repo);

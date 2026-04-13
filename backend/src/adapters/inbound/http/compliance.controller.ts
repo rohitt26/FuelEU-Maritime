@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { RouteRepositoryFile } from "../../outbound/file/RouteRepositoryFile";
-import { ComplianceRepositoryFile } from "../../outbound/file/ComplianceRepositoryFile";
+import { RouteRepositoryPg } from "../../outbound/postgres/RouteRepositoryPg";
+import { ComplianceRepositoryPg } from "../../outbound/postgres/ComplianceRepositoryPg";
 import { ComputeCB } from "../../../core/application/ComputeCB";
 import { GetAdjustedCB } from "../../../core/application/GetAdjustedCB";
 
 const router = Router();
 
-const routeRepo = new RouteRepositoryFile();
-const complianceRepo = new ComplianceRepositoryFile();
+const routeRepo = new RouteRepositoryPg();
+const complianceRepo = new ComplianceRepositoryPg();
 
 const computeCB = new ComputeCB(routeRepo, complianceRepo);
 const getAdjustedCB = new GetAdjustedCB(complianceRepo);

@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { BankingRepositoryFile } from "../../outbound/file/BankingRepositoryFile";
-import { ComplianceRepositoryFile } from "../../outbound/file/ComplianceRepositoryFile";
+import { BankingRepositoryPg } from "../../outbound/postgres/BankingRepositoryPg";
+import { ComplianceRepositoryPg } from "../../outbound/postgres/ComplianceRepositoryPg";
 import { GetBankRecords } from "../../../core/application/GetBankRecords";
 import { BankSurplus } from "../../../core/application/BankSurplus";
 import { ApplyBanked } from "../../../core/application/ApplyBanked";
 
 const router = Router();
 
-const bankingRepo = new BankingRepositoryFile();
-const complianceRepo = new ComplianceRepositoryFile();
+const bankingRepo = new BankingRepositoryPg();
+const complianceRepo = new ComplianceRepositoryPg();
 
 const getRecords = new GetBankRecords(bankingRepo);
 const bankSurplus = new BankSurplus(complianceRepo, bankingRepo);
