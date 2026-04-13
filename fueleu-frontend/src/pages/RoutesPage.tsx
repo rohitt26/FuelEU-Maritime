@@ -7,8 +7,12 @@ export const RoutesPage = () => {
   const { routes } = useRoutes();
 
   const setBaseline = async (id: string) => {
-    await api.setBaseline(id);
-    window.location.reload();
+    try {
+      await api.setBaseline(id);
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to set baseline:", error);
+    }
   };
 
   return (
@@ -30,31 +34,33 @@ export const RoutesPage = () => {
       </header>
 
       {/* Table Section */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+      <div className="overflow-x-auto w-full">
+        {/* Added table-fixed to force uniform distribution */}
+        <table className="w-full border-collapse table-fixed">
           <thead>
             <tr className="border-b-2 border-black">
-              <th className="py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Route ID</th>
-              <th className="py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Vessel Type</th>
-              <th className="py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Fuel</th>
-              <th className="py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Year</th>
-              <th className="py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">GHG Intensity</th>
-              <th className="py-4 px-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">Baseline</th>
-              <th className="py-4 px-2 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">Action</th>
+              {/* Defined 14.28% (1/7th) width for every column */}
+              <th className="w-[14.28%] py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Route ID</th>
+              <th className="w-[14.28%] py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Vessel Type</th>
+              <th className="w-[14.28%] py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Fuel</th>
+              <th className="w-[14.28%] py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Year</th>
+              <th className="w-[14.28%] py-4 px-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">GHG Intensity</th>
+              <th className="w-[14.28%] py-4 px-2 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">Baseline</th>
+              <th className="w-[14.28%] py-4 px-2 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400">Action</th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-slate-100">
             {routes.map((r) => (
               <tr key={r.routeId} className="group hover:bg-slate-50 transition-colors">
-                <td className="py-5 px-2 text-sm font-mono font-medium tracking-tight">
+                <td className="py-5 px-2 text-sm font-mono font-medium tracking-tight truncate">
                   {r.routeId}
                 </td>
-                <td className="py-5 px-2 text-sm text-slate-600">
+                <td className="py-5 px-2 text-sm text-slate-600 truncate">
                   {r.vesselType}
                 </td>
                 <td className="py-5 px-2 text-sm text-slate-600">
-                  <span className="border border-slate-200 px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider">
+                  <span className="border border-slate-200 px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider inline-block">
                     {r.fuelType}
                   </span>
                 </td>
@@ -77,7 +83,7 @@ export const RoutesPage = () => {
                   {!r.isBaseline && (
                     <button
                       onClick={() => setBaseline(r.routeId)}
-                      className="text-[10px] font-bold uppercase tracking-widest border border-slate-300 px-4 py-2 hover:bg-black hover:border-black hover:text-white transition-all"
+                      className="text-[10px] font-bold uppercase tracking-widest border border-slate-300 px-4 py-2 hover:bg-black hover:border-black hover:text-white transition-all whitespace-nowrap"
                     >
                       Set Baseline
                     </button>
