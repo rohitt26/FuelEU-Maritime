@@ -72,7 +72,7 @@ export const usePooling = () => {
     try {
       const adjustedBalances = await Promise.all(
         routeIds.map(async (routeId) => {
-          await complianceApi.getComplianceBalance(routeId, year);
+          await complianceApi.calculateComplianceBalance(routeId, year);
           return complianceApi.getAdjustedComplianceBalance(routeId, year);
         })
       );

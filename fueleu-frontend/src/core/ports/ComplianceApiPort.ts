@@ -9,6 +9,11 @@ import type {
 
 export interface ComplianceApiPort {
   getComplianceBalance(routeId: string, year: number): Promise<ComplianceBalance>;
+  getComplianceBalances(): Promise<ComplianceBalance[]>;
+  calculateComplianceBalance(
+    routeId: string,
+    year: number
+  ): Promise<ComplianceBalance>;
   getAdjustedComplianceBalance(
     routeId: string,
     year: number

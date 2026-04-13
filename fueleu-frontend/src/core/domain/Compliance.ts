@@ -9,9 +9,18 @@ export interface AdjustedComplianceBalance extends ComplianceBalance {
 }
 
 export interface BankRecord {
+  balance: number;
+  transactions: BankTransaction[];
+}
+
+export interface BankTransaction {
+  id: string;
   routeId: string;
   year: number;
   amount: number;
+  type: "BANK" | "APPLY";
+  balanceAfter: number;
+  createdAt: string;
 }
 
 export interface BankSurplusResult {

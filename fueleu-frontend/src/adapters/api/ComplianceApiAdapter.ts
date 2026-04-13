@@ -36,6 +36,24 @@ export class ComplianceApiAdapter implements ComplianceApiPort {
     return parseResponse<ComplianceBalance>(response);
   }
 
+  async getComplianceBalances(): Promise<ComplianceBalance[]> {
+    const response = await fetch(`${API_URL}/compliance/records`);
+    return parseResponse<ComplianceBalance[]>(response);
+  }
+
+  async calculateComplianceBalance(
+    routeId: string,
+    year: number
+  ): Promise<ComplianceBalance> {
+    const response = await fetch(`${API_URL}/compliance/cb`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ routeId, year }),
+    });
+
+    return parseResponse<ComplianceBalance>(response);
+  }
+
   async getAdjustedComplianceBalance(
     routeId: string,
     year: number
@@ -47,10 +65,8 @@ export class ComplianceApiAdapter implements ComplianceApiPort {
     return parseResponse<AdjustedComplianceBalance>(response);
   }
 
-  async getBankRecord(routeId: string, year: number): Promise<BankRecord> {
-    const response = await fetch(
-      `${API_URL}/banking/records?routeId=${routeId}&year=${year}`
-    );
+  async getBankRecord(_routeId: string, _year: number): Promise<BankRecord> {
+    const response = await fetch(`${API_URL}/banking/records`);
 
     return parseResponse<BankRecord>(response);
   }

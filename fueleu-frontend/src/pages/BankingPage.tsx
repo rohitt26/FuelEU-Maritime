@@ -1,91 +1,110 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useBanking } from "../adapters/ui/hooks/useBanking";
-import { useRoutes } from "../adapters/ui/hooks/useRoutes";
 import {
   canApplyBanked,
   canBankSurplus,
   getBankingKpis,
 } from "../core/application/usecases/banking";
 
-// Simple Chevron Icon Component
 const ChevronDown = () => (
-  <svg className="w-4 h-4 text-slate-400 pointer-events-none absolute right-3 bottom-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg
+    className="pointer-events-none absolute bottom-4 right-3 h-4 w-4 text-slate-400"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
   </svg>
 );
 
 export const BankingPage = () => {
-  const { routes } = useRoutes();
   const {
-    snapshot,
+    rows,
+    bank,
+    selectedBalance,
     lastApplication,
+    loading,
     error,
     success,
-    loading,
-    fetchData,
+    calculateComplianceBalance,
+    selectComplianceBalance,
     bankSurplus,
     applyBanked,
     clearMessages,
   } = useBanking();
 
-  // State
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [routeId, setRouteId] = useState("");
-  const [amount, setAmount] = useState<number>(0);
-  const [calculated, setCalculated] = useState(false);
+  const [pendingSelection, setPendingSelection] = useState("");
+  const [activeKey, setActiveKey] = useState("");
+  const [amount, setAmount] = useState(0);
+  const [showTransactions, setShowTransactions] = useState(false);
 
-  // Logic: Get unique years from routes for the first dropdown
-  const availableYears = useMemo(() => {
-    const years = routes.map((r) => r.year);
-    return Array.from(new Set(years)).sort((a, b) => b - a);
-  }, [routes]);
+  const pendingRows = useMemo(
+    () => rows.filter((row) => !row.isCalculated),
+    [rows]
+  );
 
-  // Logic: Filter routes based on selected year
-  const filteredRoutes = useMemo(() => {
-    return routes.filter((r) => r.year.toString() === selectedYear);
-  }, [routes, selectedYear]);
+  const activeRow = useMemo(
+    () => rows.find((row) => `${row.routeId}-${row.year}` === activeKey) ?? null,
+    [rows, activeKey]
+  );
 
-  const selectedRoute = routes.find((route) => route.routeId === routeId);
+  const snapshot =
+    activeRow && selectedBalance
+      ? {
+          cb: selectedBalance,
+          bank,
+        }
+      : null;
+
   const kpis = getBankingKpis(snapshot, lastApplication);
-  const hasSelection = Boolean(selectedRoute);
-  const canBank = canBankSurplus(snapshot);
+  const canBank = activeRow
+    ? canBankSurplus(snapshot) && !activeRow.alreadyBanked
+    : false;
   const canApply = canApplyBanked(snapshot, amount);
 
-  // Handlers
-  const handleYearChange = (year: string) => {
-    setSelectedYear(year);
-    setRouteId(""); // Reset route selection when year changes
-    setCalculated(false);
-    clearMessages();
-  };
-
-  const handleRouteChange = (nextRouteId: string) => {
-    setRouteId(nextRouteId);
-    setAmount(0);
-    setCalculated(false);
-    clearMessages();
-  };
-
   const handleCalculate = async () => {
-    if (!selectedRoute) return;
-    await fetchData(routeId, Number(selectedYear));
-    setCalculated(true);
+    if (!pendingSelection) {
+      return;
+    }
+
+    const [routeId, year] = pendingSelection.split("|");
+    const balance = await calculateComplianceBalance(routeId, Number(year));
+
+    if (balance) {
+      setActiveKey(`${routeId}-${year}`);
+      setPendingSelection("");
+    }
+  };
+
+  const handleSelectRow = async (routeId: string, year: number) => {
+    clearMessages();
+    setActiveKey(`${routeId}-${year}`);
+    setAmount(0);
+
+    if (rows.find((row) => row.routeId === routeId && row.year === year)?.isCalculated) {
+      await selectComplianceBalance(routeId, year);
+    }
   };
 
   const handleBank = async () => {
-    if (!selectedRoute) return;
-    await bankSurplus(routeId, Number(selectedYear));
+    if (!activeRow) {
+      return;
+    }
+
+    await bankSurplus(activeRow.routeId, activeRow.year);
   };
 
   const handleApply = async () => {
-    if (!selectedRoute) return;
-    await applyBanked(routeId, Number(selectedYear), amount);
+    if (!activeRow) {
+      return;
+    }
+
+    await applyBanked(activeRow.routeId, activeRow.year, amount);
     setAmount(0);
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-8 font-sans text-slate-900">
-      {/* Notifications */}
+    <div className="mx-auto max-w-7xl p-8 text-slate-900">
       <div className="mb-8 space-y-2">
         {error && (
           <div className="border-l-4 border-black bg-slate-50 p-4 text-sm font-medium">
@@ -99,134 +118,249 @@ export const BankingPage = () => {
         )}
       </div>
 
-      <header className="mb-12 border-b border-slate-200 pb-6 flex justify-between items-end">
+      <header className="mb-10 flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Maritime Operations</p>
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+            Maritime Operations
+          </p>
           <h1 className="text-3xl font-light tracking-tight">Banking Dashboard</h1>
         </div>
-        {selectedRoute && (
-          <div className="text-right text-xs uppercase tracking-widest text-slate-500">
-            {selectedRoute.fuelType} // {selectedRoute.ghgIntensity} GHGi
+
+        <div className="grid grid-cols-2 gap-px border border-slate-200 bg-slate-200 md:min-w-[360px]">
+          <div className="bg-white p-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+              Global Bank Balance
+            </p>
+            <p className="text-2xl font-light tracking-tighter">{bank.balance.toFixed(2)}</p>
           </div>
-        )}
+          <div className="bg-white p-4">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+              Transactions
+            </p>
+            <p className="text-2xl font-light tracking-tighter">{bank.transactions.length}</p>
+          </div>
+        </div>
       </header>
 
-      {/* Control Panel */}
-      <section className="mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-          {/* Year Selection */}
-          <div className="relative">
-            <label className="block text-[10px] font-bold uppercase mb-2 tracking-widest">1. Select Year</label>
-            <select
-              className="w-full bg-white border border-slate-300 rounded-none p-3 text-sm focus:outline-none focus:border-black transition-colors appearance-none pr-10"
-              value={selectedYear}
-              onChange={(e) => handleYearChange(e.target.value)}
+      <section className="mb-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="border border-slate-200 bg-white p-6">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+            Calculate Compliance Balance
+          </p>
+          <p className="mb-4 text-sm text-slate-500">
+            Only entries without a stored compliance balance appear here. Once calculated,
+            the value stays available in the table and is not recalculated.
+          </p>
+
+          <div className="flex flex-col gap-3 md:flex-row">
+            <div className="relative flex-1">
+              <select
+                className="w-full appearance-none border border-slate-300 bg-white p-3 pr-10 text-sm focus:border-black focus:outline-none"
+                value={pendingSelection}
+                onChange={(event) => setPendingSelection(event.target.value)}
+              >
+                <option value="">Choose an entry to calculate...</option>
+                {pendingRows.map((row) => (
+                  <option key={`${row.routeId}-${row.year}`} value={`${row.routeId}|${row.year}`}>
+                    {row.routeId} - {row.vesselType} - {row.year}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown />
+            </div>
+
+            <button
+              onClick={handleCalculate}
+              disabled={!pendingSelection || loading}
+              className="border border-black bg-black px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-white hover:text-black disabled:opacity-20"
             >
-              <option value="">Choose Year...</option>
-              {availableYears.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-            <ChevronDown />
+              {loading ? "Processing..." : "Calculate CB"}
+            </button>
+          </div>
+        </div>
+
+        <div className="border border-slate-200 bg-white p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+                Banking Transactions
+              </p>
+              <p className="text-sm text-slate-500">
+                Every bank and apply action is stored here.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowTransactions((current) => !current)}
+              className="border border-slate-300 px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-700 transition-all hover:border-black hover:text-black"
+            >
+              {showTransactions ? "Hide" : "View"}
+            </button>
           </div>
 
-          {/* Route Selection */}
-          <div className="md:col-span-2 relative">
-            <label className={`block text-[10px] font-bold uppercase mb-2 tracking-widest ${!selectedYear ? 'text-slate-300' : ''}`}>
-              2. Select Route
-            </label>
-            <select
-              disabled={!selectedYear}
-              className="w-full bg-white border border-slate-300 rounded-none p-3 text-sm focus:outline-none focus:border-black transition-colors appearance-none pr-10 disabled:bg-slate-50 disabled:border-slate-100"
-              value={routeId}
-              onChange={(e) => handleRouteChange(e.target.value)}
-            >
-              <option value="">{selectedYear ? "Choose a route..." : "Select a year first"}</option>
-              {filteredRoutes.map((route) => (
-                <option key={route.routeId} value={route.routeId}>
-                  {route.routeId} — {route.vesselType}
-                </option>
-              ))}
-            </select>
-            <ChevronDown />
-          </div>
+          {showTransactions && (
+            <div className="max-h-64 space-y-3 overflow-auto pr-1">
+              {bank.transactions.length === 0 && (
+                <p className="text-sm text-slate-500">No banking transactions recorded yet.</p>
+              )}
 
-          <button
-            onClick={handleCalculate}
-            disabled={!hasSelection || loading}
-            className="h-[46px] border border-black bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all disabled:opacity-20"
-          >
-            {loading ? "Processing..." : "Calculate CB"}
-          </button>
+              {bank.transactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="border border-slate-200 bg-slate-50 p-3 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                      {transaction.type}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {new Date(transaction.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-slate-700">
+                    {transaction.routeId} / {transaction.year} / {transaction.amount.toFixed(2)}
+                  </p>
+                  <p className="mt-1 text-xs uppercase tracking-widest text-slate-500">
+                    Balance After: {transaction.balanceAfter.toFixed(2)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {calculated && snapshot && (
-        <div className="animate-in fade-in duration-500">
-          {/* KPI Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-slate-200 border border-slate-200 mb-12">
-            {[
-              { label: "CB Before", value: kpis.cbBefore },
-              { label: "Applied", value: kpis.applied },
-              { label: "CB After", value: kpis.cbAfter },
-              { label: "Banked Available", value: snapshot.bank.amount },
-              { label: "Current Status", value: snapshot.cb.cb > 0 ? "SURPLUS" : "DEFICIT", isStatus: true },
-              { label: "Reference", value: `${snapshot.cb.routeId} / ${snapshot.cb.year}` },
-            ].map((item, i) => (
-              <div key={i} className="bg-white p-6">
-                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 mb-2">{item.label}</p>
-                <p className={`text-2xl font-light tracking-tighter ${
-                  item.isStatus 
-                    ? (snapshot.cb.cb > 0 ? "text-slate-900" : "text-red-500") 
-                    : "text-slate-900"
-                }`}>
-                  {typeof item.value === 'number' ? item.value.toFixed(2) : item.value}
-                </p>
-              </div>
-            ))}
+      <section className="mb-10 overflow-hidden border border-slate-200 bg-white">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-[10px] uppercase tracking-[0.15em] text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Route</th>
+                <th className="px-4 py-3">Year</th>
+                <th className="px-4 py-3">Vessel</th>
+                <th className="px-4 py-3">Fuel</th>
+                <th className="px-4 py-3">CB</th>
+                <th className="px-4 py-3">Bank Status</th>
+                <th className="px-4 py-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const isActive = `${row.routeId}-${row.year}` === activeKey;
+
+                return (
+                  <tr
+                    key={`${row.routeId}-${row.year}`}
+                    className={isActive ? "bg-slate-50" : "border-t border-slate-100"}
+                  >
+                    <td className="px-4 py-3 font-medium">{row.routeId}</td>
+                    <td className="px-4 py-3">{row.year}</td>
+                    <td className="px-4 py-3">{row.vesselType}</td>
+                    <td className="px-4 py-3">{row.fuelType}</td>
+                    <td className="px-4 py-3">
+                      {row.isCalculated ? (
+                        <span className={row.cb !== null && row.cb < 0 ? "text-red-500" : ""}>
+                          {row.cb?.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Not calculated</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.alreadyBanked ? "Already banked" : "Available"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => void handleSelectRow(row.routeId, row.year)}
+                        disabled={!row.isCalculated || loading}
+                        className="border border-slate-300 px-3 py-2 text-xs font-bold uppercase tracking-widest transition-all hover:border-black hover:text-black disabled:opacity-30"
+                      >
+                        View CB
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {activeRow && selectedBalance && (
+        <section className="grid gap-8 border-t border-slate-100 pt-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <div className="mb-6 grid grid-cols-2 gap-px border border-slate-200 bg-slate-200 md:grid-cols-3">
+              {[
+                { label: "CB Before", value: kpis.cbBefore },
+                { label: "Applied", value: kpis.applied },
+                { label: "CB After", value: kpis.cbAfter },
+                { label: "Global Bank", value: bank.balance },
+                {
+                  label: "Current Status",
+                  value: selectedBalance.cb > 0 ? "SURPLUS" : selectedBalance.cb < 0 ? "DEFICIT" : "BALANCED",
+                },
+                { label: "Reference", value: `${activeRow.routeId} / ${activeRow.year}` },
+              ].map((item) => (
+                <div key={item.label} className="bg-white p-5">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+                    {item.label}
+                  </p>
+                  <p
+                    className={`text-2xl font-light tracking-tighter ${
+                      typeof item.value === "number"
+                        ? item.value < 0
+                          ? "text-red-500"
+                          : "text-slate-900"
+                        : "text-slate-900"
+                    }`}
+                  >
+                    {typeof item.value === "number" ? item.value.toFixed(2) : item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border border-slate-200 bg-white p-6">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">
+                Selected Entry
+              </p>
+              <p className="text-sm text-slate-600">
+                {activeRow.routeId} / {activeRow.vesselType} / {activeRow.fuelType} / {activeRow.year}
+              </p>
+            </div>
           </div>
 
-          {/* Action Modules */}
-          <div className="grid md:grid-cols-2 gap-12 border-t border-slate-100 pt-12">
-            {/* Bank Surplus */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-widest mb-2">Banking Retention</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Transfer existing surplus compliance balance into the long-term banking reserve.
-                </p>
-              </div>
-              
+          <div className="grid gap-8">
+            <div className="border border-slate-200 bg-white p-6">
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-widest">Bank Surplus</h3>
+              <p className="mb-5 text-sm text-slate-500">
+                Add this surplus to the single global bank balance.
+              </p>
               <button
                 onClick={handleBank}
                 disabled={!canBank || loading}
-                className="w-full py-4 border border-black text-xs font-bold uppercase tracking-widest transition-all hover:bg-black hover:text-white disabled:opacity-20"
+                className="w-full border border-black py-4 text-xs font-bold uppercase tracking-widest transition-all hover:bg-black hover:text-white disabled:opacity-20"
               >
-                Execute Banking
+                Add To Global Bank
               </button>
-
               {!canBank && (
-                <p className="text-[11px] italic text-slate-400">
-                  {snapshot.cb.cb <= 0 
-                    ? "Retention unavailable: Compliance balance is not positive." 
-                    : "Retention unavailable: Route already contains banked surplus."}
+                <p className="mt-3 text-[11px] italic text-slate-400">
+                  {activeRow.alreadyBanked
+                    ? "This entry has already been banked."
+                    : "Only positive compliance balances can be banked."}
                 </p>
               )}
             </div>
 
-            {/* Apply Banked */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-widest mb-2">Compliance Offset</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Utilize banked reserves to offset current route deficits.
-                </p>
-              </div>
+            <div className="border border-slate-200 bg-white p-6">
+              <h3 className="mb-2 text-sm font-bold uppercase tracking-widest">Apply Bank</h3>
+              <p className="mb-5 text-sm text-slate-500">
+                Use the global bank balance to reduce this deficit.
+              </p>
 
               <div className="flex gap-2">
                 <input
                   type="number"
-                  className="flex-1 bg-white border border-slate-300 p-3 text-sm focus:outline-none focus:border-black"
+                  className="flex-1 border border-slate-300 p-3 text-sm focus:border-black focus:outline-none"
                   value={amount}
                   onChange={(event) => setAmount(Number(event.target.value))}
                   placeholder="0.00"
@@ -234,26 +368,21 @@ export const BankingPage = () => {
                 <button
                   onClick={handleApply}
                   disabled={!canApply || loading}
-                  className="px-8 bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-20"
+                  className="bg-black px-6 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-slate-800 disabled:opacity-20"
                 >
                   Apply
                 </button>
               </div>
 
               {!canApply && (
-                <p className="text-[11px] italic text-slate-400">
-                  Offset available only for deficit routes with sufficient banked reserves.
+                <p className="mt-3 text-[11px] italic text-slate-400">
+                  Apply is available only for deficit entries and cannot exceed the global bank
+                  balance.
                 </p>
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {loading && !calculated && (
-        <div className="flex items-center justify-center py-24">
-          <div className="h-8 w-8 border-2 border-slate-200 border-t-black animate-spin rounded-full"></div>
-        </div>
+        </section>
       )}
     </div>
   );
