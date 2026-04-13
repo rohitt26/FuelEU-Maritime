@@ -11,7 +11,7 @@ The project models domain workflows such as baseline route handling, compliance 
 
 ![RoutesPage](./screenshots/Routes.png)
 
-## Architecture Summary (Hexagonal Structure)
+## Architecture (Hexagonal Structure)
 
 The backend follows a hexagonal architecture (ports and adapters):
 

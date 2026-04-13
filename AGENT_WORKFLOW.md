@@ -11,15 +11,15 @@
 ### Prompts & Outputs – ChatGPT (Initial Framework & Step-by-Step Build)
 ChatGPT was used first to establish the overall project and generate the base code. It produced working initial snippets but began hallucinating on refinements and complex logic connections.
 
-1. **Prompt**: `lets go through the overall idea of the project.  `
+1. **Prompt**: `lets go through the overall idea of the project.  `   
    **Output**: High-level overview of a ship compliance system with CB (Compliance Balance) calculations, banking of surplus, and pooling for deficits. Generated initial domain concepts and flow.  
    **Refinement**: No major issues; used as foundation.
 
-2. **Prompt**: `how are they computing compliance.  `
+2. **Prompt**: `how are they computing compliance.  `   
    **Output**: Explained CB formulas and logic. Produced initial computation functions.  
    **Refinement**: Formulas were verified later in prompt 9.
 
-3. **Prompt**: `If ships cb is negative then we can use that ship either by banking or by pooling, right?  `
+3. **Prompt**: `If ships cb is negative then we can use that ship either by banking or by pooling, right?  `   
    **Output**: Confirmed negative-CB handling via banking or pooling.  
    **Refinement**: Integrated into core logic.
 
@@ -44,49 +44,49 @@ ChatGPT was used first to establish the overall project and generate the base co
    **Output**: Full explanation + initial folder structure and boilerplate with dependency inversion.  
    **Refinement**: Used as the permanent architecture.
 
-5. **Prompt**: `first tell me what is the basic thing we can do in the backend and make it functioning? and then we will move to next part  `
+5. **Prompt**: `first tell me what is the basic thing we can do in the backend and make it functioning? and then we will move to next part  `   
    **Output**: Suggested and generated basic CRUD + file-based DB prototype (JSON files for routes, compliance, banking, pools).  
    **Refinement**: Quick start; later migrated to Postgres.
 
-6. **Prompt**:` Give me the CB implementation with formulas and endpoints  `
+6. **Prompt**:` Give me the CB implementation with formulas and endpoints  `   
    **Output**: CB computation functions + HTTP endpoints.  
    **Issue/Fix**: Later CB bugs appeared (see Observations).
 
-7. **Prompt**: `Give me the Banking implementation  `
+7. **Prompt**: `Give me the Banking implementation  `   
    **Output**: Initial banking endpoints and logic (treated banks as per-route).  
    **Issue**: Hallucinated per-route banks instead of global. Fixed later with Codex + manual architecture guidance.
 
-8. **Prompt**: `Give me the Pooling implementation  `
+8. **Prompt**: `Give me the Pooling implementation  `  
    **Output**: Initial pooling logic and endpoints.  
    **Issue**: Not year-wise and included ships without calculated CB. Fixed with my explicit instructions + Codex.
 
-9. **Prompt**:` Now we will go through the formula verification, let's go all tabs step by step ` 
+9. **Prompt**:` Now we will go through the formula verification, let's go all tabs step by step `   
    **Output**: Step-by-step walkthrough of all tabs/formulas.  
    **Refinement**: Used for verification before frontend.
 
-10. **Prompt**: `Now let's create frontend step by step  `
+10. **Prompt**: `Now let's create frontend step by step  `  
     **Output**: React frontend skeleton.  
     **Refinement**: Continued in subsequent prompts.
 
-11. **Prompt**:` first letus creat the routes page with the table in it.  `
+11. **Prompt**:` first letus creat the routes page with the table in it.  `   
     **Output**: Routes page with data table.
 
-12. **Prompt**:` Continue with Compare page + chart (Recharts + compliance table)  `
+12. **Prompt**:` Continue with Compare page + chart (Recharts + compliance table)  `   
     **Output**: Compare page with Recharts charts + compliance table.
 
-13. **Prompt**: `Banking Page  `
+13. **Prompt**: `Banking Page  `   
     **Output**: Banking page UI and basic interactions.
 
-14. **Prompt**: `Pooling Page  `
+14. **Prompt**: `Pooling Page  `   
     **Output**: Pooling page UI.
 
-15. **Prompt**:` like ask the user to put the routeId and year then click on the calculate and then - cb_before, applied, cb_after and bank and apply show up  `
+15. **Prompt**:` like ask the user to put the routeId and year then click on the calculate and then - cb_before, applied, cb_after and bank and apply show up  `   
     **Output**: Interactive calculate UI with cb_before/applied/cb_after + bank/apply flows.
 
-16. **Prompt**: `if the routeid or year is not found when the user enter then handle the case that froent don't get damaged  `
+16. **Prompt**: `if the routeid or year is not found when the user enter then handle the case that froent don't get damaged  `   
     **Output**: Basic error handling in frontend forms.
 
-17. **Prompt**:` only those ships whose CB is calculated should be in the pooling.  `
+17. **Prompt**:` only those ships whose CB is calculated should be in the pooling.  `   
     **Output**: Initial filtering logic for pooling.  
     **Issue**: Not fully enforced until Codex + manual tweak.
 
@@ -95,40 +95,40 @@ ChatGPT was used first to establish the overall project and generate the base co
 ### Prompts & Outputs – Gemini (Refinement & UI/Polish)
 Used after ChatGPT to clean up and enhance.
 
-1. **Prompt**: `Make the UI proper, like keep the UI minimilistic like black ( lines ) and white, but professional as well, also don't change any name, function etc, just fix the UI  `
+1. **Prompt**: `Make the UI proper, like keep the UI minimilistic like black ( lines ) and white, but professional as well, also don't change any name, function etc, just fix the UI  `   
    **Output**: Clean minimalist black/white professional UI across all pages. No functional changes.
 
-2. **Prompt**: `give the accordian symbol in the operational year  `
+2. **Prompt**: `give the accordian symbol in the operational year  `   
    **Output**: Accordion component added for operational year sections.
 
-3. **Prompt**:` add the filter for route-id year and type in routepage  `
+3. **Prompt**:` add the filter for route-id year and type in routepage  `   
    **Output**: Filters for route-id, year, and type on Routes page.
 
-4. **Prompt**:` generate the mock data for seeding  `
+4. **Prompt**:` generate the mock data for seeding  `   
    **Output**: Complete mock data seeding scripts for routes, ships, compliance, etc.
 
-5. **Prompt**: `also one button for reset filter  `
+5. **Prompt**: `also one button for reset filter  `   
    **Output**: Reset filter button added (integrated with prompt 3).  
    **Overall**: Gemini successfully refined the entire codebase post-ChatGPT.
 
 ### Prompts & Outputs – Codex (Restructuring Banking & Pooling)
 Used for precise code corrections, driven by logic feeded by my analysis.
 
-1. **Prompt**:` In banking there should be only one bank (global bank balance). When surplus is added (banked), the bank balance should increase. When applied, the bank balance should decrease and be usable for deficits. It should behave like a single global bank balance. If compliance balance (CB) is already calculated, it should be listed below. There should be a dropdown to calculate compliance balance for entries where it is not yet calculated.  `
+1. **Prompt**:` In banking there should be only one bank (global bank balance). When surplus is added (banked), the bank balance should increase. When applied, the bank balance should decrease and be usable for deficits. It should behave like a single global bank balance. If compliance balance (CB) is already calculated, it should be listed below. There should be a dropdown to calculate compliance balance for entries where it is not yet calculated.  `   
    **Output**: Global single-bank implementation with transaction history, CB listing, and calculate dropdown.  
    **Correction**: Fully resolved earlier per-route hallucination.
 
-2. **Prompt**: `Once compliance balance is calculated, it should not be recalculated again. Users should be able to view the compliance balance directly from the table. If someone adds to the bank or applies from it, the transaction should be stored in banking. There should be an option to view transactions. All such transactions should be displayed in that section.  `
+2. **Prompt**: `Once compliance balance is calculated, it should not be recalculated again. Users should be able to view the compliance balance directly from the table. If someone adds to the bank or applies from it, the transaction should be stored in banking. There should be an option to view transactions. All such transactions should be displayed in that section.  `   
    **Output**: No-recalculate enforcement + transaction storage and view.  
    **Correction**: Fixed recalculation bugs.
 
-3. **Prompt**: `in the pooling table, mention if the cb is not calculated yet and disable the checkbox and once the cb is calculated then enable the checkbox  `
+3. **Prompt**: `in the pooling table, mention if the cb is not calculated yet and disable the checkbox and once the cb is calculated then enable the checkbox  `   
    **Output**: Conditional checkboxes + “CB not calculated” messaging in pooling table.
 
 ### Prompts & Outputs – Cursor (Migration & Testing)
 Cursor analyzed the actual folder (backend with file-based JSON DB).
 
-1. **Prompt**:` now analyse the folder and there is backend folder, and I have currently implemented file based database, and I want to change it to postgress database. for the schema you can see the code implementation and also banking compliance routes pools .json files  `
+1. **Prompt**:` now analyse the folder and there is backend folder, and I have currently implemented file based database, and I want to change it to postgress database. for the schema you can see the code implementation and also banking compliance routes pools .json files  `   
    **Output**: Full analysis of folder + PostgreSQL schema, Prisma migrations, updated outbound adapters, and seamless switch from JSON files.  
    **Benefit**: Saved huge time (I was not familiar with Postgres initially).
 

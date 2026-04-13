@@ -125,8 +125,7 @@ export const BankingPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl p-8 text-slate-900">
-      {/* Messages */}
+    <div className="mx-auto max-w-6xl p-8 text-slate-900">
       <div className="mb-8 space-y-2">
         {error && (
           <div className="border-l-4 border-black bg-slate-50 p-4 text-sm font-medium">
