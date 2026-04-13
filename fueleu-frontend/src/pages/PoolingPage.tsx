@@ -1,6 +1,18 @@
 import { useState } from "react";
 import { usePooling } from "../adapters/ui/hooks/usePooling";
 
+// Custom Chevron/Accordion Icon
+const ChevronDown = () => (
+  <svg 
+    className="w-4 h-4 text-slate-400 pointer-events-none absolute right-3 bottom-3" 
+    fill="none" 
+    stroke="currentColor" 
+    viewBox="0 0 24 24"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
 export const PoolingPage = () => {
   const {
     routes,
@@ -74,19 +86,24 @@ export const PoolingPage = () => {
         </div>
         <div className="flex flex-col items-end">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Operational Year</label>
-          <select
-            className="bg-white border border-slate-300 rounded-none p-2 text-sm focus:outline-none focus:border-black appearance-none min-w-32 text-center font-bold"
-            value={year}
-            onChange={(event) => onYearChange(Number(event.target.value))}
-          >
-            {[...new Set(routes.map((route) => route.year))].map((routeYear) => (
-              <option key={routeYear} value={routeYear}>{routeYear}</option>
-            ))}
-          </select>
+          
+          {/* Enhanced Select Wrapper */}
+          <div className="relative min-w-32">
+            <select
+              className="w-full bg-white border border-slate-300 rounded-none p-2 pr-8 text-sm focus:outline-none focus:border-black appearance-none text-center font-bold transition-colors"
+              value={year}
+              onChange={(event) => onYearChange(Number(event.target.value))}
+            >
+              {[...new Set(routes.map((route) => route.year))].map((routeYear) => (
+                <option key={routeYear} value={routeYear}>{routeYear}</option>
+              ))}
+            </select>
+            <ChevronDown />
+          </div>
         </div>
       </header>
 
-      {/* Selection Section */}
+      {/* ... Remaining sections (Selection, Preview, History) stay exactly the same ... */}
       <section className="mb-12">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">

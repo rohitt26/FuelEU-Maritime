@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useBanking } from "../adapters/ui/hooks/useBanking";
 import { useRoutes } from "../adapters/ui/hooks/useRoutes";
 import {
@@ -6,6 +6,13 @@ import {
   canBankSurplus,
   getBankingKpis,
 } from "../core/application/usecases/banking";
+
+// Simple Chevron Icon Component
+const ChevronDown = () => (
+  <svg className="w-4 h-4 text-slate-400 pointer-events-none absolute right-3 bottom-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+  </svg>
+);
 
 export const BankingPage = () => {
   const { routes } = useRoutes();
@@ -21,21 +28,35 @@ export const BankingPage = () => {
     clearMessages,
   } = useBanking();
 
+  // State
+  const [selectedYear, setSelectedYear] = useState<string>("");
   const [routeId, setRouteId] = useState("");
   const [amount, setAmount] = useState<number>(0);
   const [calculated, setCalculated] = useState(false);
 
+  // Logic: Get unique years from routes for the first dropdown
+  const availableYears = useMemo(() => {
+    const years = routes.map((r) => r.year);
+    return Array.from(new Set(years)).sort((a, b) => b - a);
+  }, [routes]);
+
+  // Logic: Filter routes based on selected year
+  const filteredRoutes = useMemo(() => {
+    return routes.filter((r) => r.year.toString() === selectedYear);
+  }, [routes, selectedYear]);
+
   const selectedRoute = routes.find((route) => route.routeId === routeId);
-  const year = selectedRoute?.year ?? new Date().getFullYear();
   const kpis = getBankingKpis(snapshot, lastApplication);
   const hasSelection = Boolean(selectedRoute);
   const canBank = canBankSurplus(snapshot);
   const canApply = canApplyBanked(snapshot, amount);
 
-  const handleCalculate = async () => {
-    if (!selectedRoute) return;
-    await fetchData(routeId, year);
-    setCalculated(true);
+  // Handlers
+  const handleYearChange = (year: string) => {
+    setSelectedYear(year);
+    setRouteId(""); // Reset route selection when year changes
+    setCalculated(false);
+    clearMessages();
   };
 
   const handleRouteChange = (nextRouteId: string) => {
@@ -45,14 +66,20 @@ export const BankingPage = () => {
     clearMessages();
   };
 
+  const handleCalculate = async () => {
+    if (!selectedRoute) return;
+    await fetchData(routeId, Number(selectedYear));
+    setCalculated(true);
+  };
+
   const handleBank = async () => {
     if (!selectedRoute) return;
-    await bankSurplus(routeId, year);
+    await bankSurplus(routeId, Number(selectedYear));
   };
 
   const handleApply = async () => {
     if (!selectedRoute) return;
-    await applyBanked(routeId, year, amount);
+    await applyBanked(routeId, Number(selectedYear), amount);
     setAmount(0);
   };
 
@@ -86,34 +113,48 @@ export const BankingPage = () => {
 
       {/* Control Panel */}
       <section className="mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div className="md:col-span-2">
-            <label className="block text-[10px] font-bold uppercase mb-2 tracking-widest">Select Route</label>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+          {/* Year Selection */}
+          <div className="relative">
+            <label className="block text-[10px] font-bold uppercase mb-2 tracking-widest">1. Select Year</label>
             <select
-              className="w-full bg-white border border-slate-300 rounded-none p-3 text-sm focus:outline-none focus:border-black transition-colors appearance-none"
-              value={routeId}
-              onChange={(event) => handleRouteChange(event.target.value)}
+              className="w-full bg-white border border-slate-300 rounded-none p-3 text-sm focus:outline-none focus:border-black transition-colors appearance-none pr-10"
+              value={selectedYear}
+              onChange={(e) => handleYearChange(e.target.value)}
             >
-              <option value="">Choose a route...</option>
-              {routes.map((route) => (
+              <option value="">Choose Year...</option>
+              {availableYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <ChevronDown />
+          </div>
+
+          {/* Route Selection */}
+          <div className="md:col-span-2 relative">
+            <label className={`block text-[10px] font-bold uppercase mb-2 tracking-widest ${!selectedYear ? 'text-slate-300' : ''}`}>
+              2. Select Route
+            </label>
+            <select
+              disabled={!selectedYear}
+              className="w-full bg-white border border-slate-300 rounded-none p-3 text-sm focus:outline-none focus:border-black transition-colors appearance-none pr-10 disabled:bg-slate-50 disabled:border-slate-100"
+              value={routeId}
+              onChange={(e) => handleRouteChange(e.target.value)}
+            >
+              <option value="">{selectedYear ? "Choose a route..." : "Select a year first"}</option>
+              {filteredRoutes.map((route) => (
                 <option key={route.routeId} value={route.routeId}>
-                  {route.routeId} — {route.vesselType} ({route.year})
+                  {route.routeId} — {route.vesselType}
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold uppercase mb-2 tracking-widest">Year</label>
-            <div className="p-3 border border-slate-200 bg-slate-50 text-sm text-slate-400">
-              {selectedRoute ? year : "----"}
-            </div>
+            <ChevronDown />
           </div>
 
           <button
             onClick={handleCalculate}
             disabled={!hasSelection || loading}
-            className="group relative h-[46px] border border-black bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all disabled:opacity-20 disabled:hover:bg-black disabled:hover:text-white"
+            className="h-[46px] border border-black bg-black text-white text-xs font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-all disabled:opacity-20"
           >
             {loading ? "Processing..." : "Calculate CB"}
           </button>
@@ -159,7 +200,7 @@ export const BankingPage = () => {
               <button
                 onClick={handleBank}
                 disabled={!canBank || loading}
-                className="w-full py-4 border border-black text-xs font-bold uppercase tracking-widest transition-all hover:bg-black hover:text-white disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-black"
+                className="w-full py-4 border border-black text-xs font-bold uppercase tracking-widest transition-all hover:bg-black hover:text-white disabled:opacity-20"
               >
                 Execute Banking
               </button>
