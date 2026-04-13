@@ -15,21 +15,9 @@ const bankSurplus = new BankSurplus(complianceRepo, bankingRepo);
 const applyBanked = new ApplyBanked(complianceRepo, bankingRepo);
 
 // GET /banking/records
-router.get("/records", async (req, res) => {
-  const { routeId, year } = req.query;
-
-  if (!routeId || !year) {
-    return res.status(400).json({
-      error: "routeId and year required"
-    });
-  }
-
-  const record = await getRecords.execute(
-    routeId as string,
-    Number(year)
-  );
-
-  res.json(record || { routeId, year, amount: 0 });
+router.get("/records", async (_req, res) => {
+  const record = await getRecords.execute();
+  res.json(record);
 });
 
 // POST /banking/bank

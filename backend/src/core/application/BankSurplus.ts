@@ -8,7 +8,6 @@ export class BankSurplus {
   ) {}
 
   async execute(routeId: string, year: number) {
-    // 1. Get CB
     const cbRecord = await this.complianceRepo.find(routeId, year);
 
     if (!cbRecord) {
@@ -19,26 +18,27 @@ export class BankSurplus {
       throw new Error("Cannot bank non-positive CB");
     }
 
-    // 2. Check existing bank record
-    const existing = await this.bankingRepo.find(routeId, year);
+    const alreadyBanked = await this.bankingRepo.hasBanked(routeId, year);
 
-    if (existing) {
-      throw new Error(
-        "Banking already exists for this route and year. Use apply instead."
-      );
+    if (alreadyBanked) {
+      throw new Error("Surplus already banked for this route and year");
     }
 
-    // 3. Create new bank entry
-    await this.bankingRepo.upsert({
+    const snapshot = await this.bankingRepo.getSnapshot();
+    const totalBanked = Number((snapshot.balance + cbRecord.cb).toFixed(2));
+
+    await this.bankingRepo.addTransaction({
       routeId,
       year,
-      amount: cbRecord.cb
+      amount: cbRecord.cb,
+      type: "BANK",
+      balanceAfter: totalBanked
     });
 
     return {
       message: "Surplus banked successfully",
       banked: cbRecord.cb,
-      totalBanked: cbRecord.cb
+      totalBanked
     };
   }
 }

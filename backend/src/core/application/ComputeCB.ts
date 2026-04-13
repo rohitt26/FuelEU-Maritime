@@ -13,6 +13,12 @@ export class ComputeCB {
   ) {}
 
   async execute(routeId: string, year: number) {
+    const existing = await this.complianceRepo.find(routeId, year);
+
+    if (existing) {
+      return existing;
+    }
+
     const routes = await this.routeRepo.getAll();
 
     const route = routes.find(

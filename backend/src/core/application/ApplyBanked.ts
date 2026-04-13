@@ -18,13 +18,13 @@ export class ApplyBanked {
       throw new Error("No deficit to apply banking");
     }
 
-    const bank = await this.bankingRepo.find(routeId, year);
+    const bank = await this.bankingRepo.getSnapshot();
 
-    if (!bank || bank.amount <= 0) {
+    if (bank.balance <= 0) {
       throw new Error("No banked surplus available");
     }
 
-    if (amount > bank.amount) {
+    if (amount > bank.balance) {
       throw new Error("Amount exceeds available banked surplus");
     }
 
@@ -33,7 +33,7 @@ export class ApplyBanked {
     const applied = Math.min(amount, deficit);
 
     const newCB = cbRecord.cb + applied; // reduces deficit
-    const remainingBank = bank.amount - applied;
+    const remainingBank = Number((bank.balance - applied).toFixed(2));
 
     // update CB
     await this.complianceRepo.save({
@@ -42,11 +42,12 @@ export class ApplyBanked {
       cb: newCB
     });
 
-    // update bank
-    await this.bankingRepo.upsert({
+    await this.bankingRepo.addTransaction({
       routeId,
       year,
-      amount: remainingBank
+      amount: applied,
+      type: "APPLY",
+      balanceAfter: remainingBank
     });
 
     return {
