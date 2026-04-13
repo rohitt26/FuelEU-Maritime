@@ -237,11 +237,6 @@ export const PoolingPage = () => {
           </div>
         )}
       </section>
-
-      <footer className="mt-24 pt-6 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400 uppercase tracking-[0.2em]">
-        <p>© 2026 Maritime Intelligence Bureau</p>
-        <p>Simulation Engine: V3-PRO</p>
-      </footer>
     </div>
   );
 };

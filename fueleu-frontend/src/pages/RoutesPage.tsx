@@ -243,12 +243,6 @@ export const RoutesPage = () => {
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <footer className="mt-12 pt-6 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400 uppercase tracking-[0.2em]">
-        <p>© 2026 Maritime Systems Inc.</p>
-        <p>Data Integrity: Verified</p>
-      </footer>
     </div>
   );
 };

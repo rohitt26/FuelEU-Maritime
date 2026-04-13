@@ -35,8 +35,7 @@ export default function App() {
               <span className="text-white text-[12px] font-black tracking-tighter">M</span>
             </div>
             <div className="hidden sm:block leading-tight">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900">Compliance</p>
-              <p className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.1em]">Intelligence System</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-900">FuelEU Maritime</p>
             </div>
           </div>
 
