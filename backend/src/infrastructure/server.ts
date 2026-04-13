@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import routesController from "../adapters/inbound/http/routes.controller";
@@ -16,7 +17,7 @@ app.use("/banking", bankingController);
 app.use("/compliance", complianceController);
 app.use("/routes", routesController);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   await initDatabase();
